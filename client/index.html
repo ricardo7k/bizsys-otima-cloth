@@ -1,0 +1,126 @@
+<html>
+  <head>
+    <script src="tfjs.js"></script>
+    <script src="posenet.js"></script>
+    <style>
+    #c {
+      width: 800px;
+      height: 480px;
+      border: 1px solid red;
+    }
+    #v {
+      width: 800px;
+      height: 480px;
+      border: 1px solid black;
+      display: none;
+    }
+    #r {
+      display: none;
+    }
+    </style>
+ </head>
+
+  <body>
+    <img id="r" src="roupa.png" />
+    <video id="v" autoplay></video>
+    <canvas id="c"></canvas>
+  </body>
+  <script>
+
+    const scaleFactor = 1;
+    const flipHorizontal = false;
+    const outputStride = 16;
+
+    const video = document.getElementById('v');
+    const canvas = document.getElementById('c');
+    const img = document.getElementById('r');
+    const cw = 800;
+    const ch = 480;
+    const ctx = canvas.getContext('2d');
+    const score = 0.88;
+    const color = "#00BCD4";
+
+    const constraints = { audio: false, video: { width: 800, height: 480 } };
+
+    canvas.width = cw;
+    canvas.height = ch;
+
+    canvas.style.transform = 'scale(-1, 1)';
+
+    var onet;
+
+    async function init() {
+      try {
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
+          handleSuccess(stream);
+      } catch (e) {
+          console.info(`navigator.getUserMedia error:${e.toString()}`);
+      }
+    }
+
+    // Success
+    function handleSuccess(stream) {
+        window.stream = stream;
+        video.srcObject = stream;
+        var net = posenet.load().then(async function(net) {
+          onet = net;
+          var pose = await onet.estimateSinglePose(canvas, scaleFactor, flipHorizontal, outputStride);
+          console.info(pose);
+          draw();
+        });
+    }
+
+    function drawLine(a, b, pose) {
+      if(
+        pose.keypoints[a].score>score &&
+        pose.keypoints[b].score>score
+      )  {
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 5;
+        ctx.moveTo(pose.keypoints[a].position.x, pose.keypoints[a].position.y);
+        ctx.lineTo(pose.keypoints[b].position.x, pose.keypoints[b].position.y);
+        ctx.stroke();
+      }
+
+    }
+
+    async function draw() {
+      var pose = await onet.estimateSinglePose(canvas, scaleFactor, flipHorizontal, outputStride);
+      ctx.drawImage(video, 0, 0, cw, ch);
+      ctx.fillStyle = color;
+      for(var i=5; i<17; i++) {
+        ctx.beginPath();
+        if(pose.keypoints[i].score>score) ctx.arc(pose.keypoints[i].position.x, pose.keypoints[i].position.y, 5, 0, Math.PI * 2, true); // Draw a point using the arc function of the canvas with a point structure.
+        ctx.fill();
+      }
+      //BRACO OMBRO
+      drawLine(5, 6, pose);
+      drawLine(5, 7, pose);
+      drawLine(7, 9, pose);
+      drawLine(6, 8, pose);
+      drawLine(8, 10, pose);
+      //OMBRO CINTURA
+      drawLine(5, 6, pose);
+      drawLine(6, 12, pose);
+      drawLine(12, 11, pose);
+      drawLine(11, 5, pose);
+      //CINTURA PERNA
+      drawLine(11, 13, pose);
+      drawLine(13, 15, pose);
+      drawLine(11, 12, pose);
+      drawLine(12, 14, pose);
+      drawLine(14, 16, pose);
+
+      var ww = (Math.sqrt(Math.pow(pose.keypoints[6].position.x-pose.keypoints[5].position.x,2) + Math.pow(pose.keypoints[6].position.y-pose.keypoints[5].position.y,2)));
+
+      var xx = pose.keypoints[6].position.x;
+      var yy = pose.keypoints[6].position.y;
+      ctx.drawImage(img, xx,  yy, ww, (ww/232)*356);
+      ;
+
+      window.requestAnimationFrame(draw);
+    }
+    init();
+  </script>
+</html>
