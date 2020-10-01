@@ -1,4 +1,4 @@
 {
-    "clientPath" : "/../client",
+    "clientPath" : "/./client/",
     "webhook_slack" : ""
 }
